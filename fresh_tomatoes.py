@@ -1,6 +1,7 @@
 import webbrowser
 import os
 import re
+import media
 
 # Styles and scripting for the page
 main_page_head = '''
@@ -18,11 +19,6 @@ body {
   background-color: #000;
   padding-top: 80px;
 }
-
-h2.movie-title {
-  font-size: 1.2em;
-}
-
 #trailer .modal-dialog {
   margin-top: 200px;
   width: 640px;
@@ -41,11 +37,17 @@ h2.movie-title {
   height: 100%;
 }
 
-.movie-tile a {
-  color: #666;
-  text-decoration: none;
+h2 {
+    color: white;
+    padding-bottom: 25px;
 }
-
+.movie-tile {
+    float: left;
+    width: 255px;
+    height: 600px;
+    margin: 10px;
+    border: 3px;  
+}
 .movie-tile img {
   display: block;
   margin: auto;
@@ -65,6 +67,20 @@ h2.movie-title {
   top: 0;
   background-color: white;
 }
+.movie-poster:hover {
+  -webkit-transform: scale(1.2);
+  -moz-transform: scale(1.2);
+  -o-transform: scale(1.2);
+  transform: scale(1.2);
+  transition: all 0.3s;
+  -webkit-transition: all 0.3s;
+}
+.movie-poster:hover .quote {
+  display:inline-block;
+}
+.movie-poster:hover .navbar-brand {
+  display:none;
+}
     </style>
     <script type="text/javascript" charset="utf-8">
         // Pause the video when the modal is closed
@@ -74,7 +90,7 @@ h2.movie-title {
             $("#trailer-video-container").empty();
         });
         // Start playing the video whenever the trailer modal is opened
-        $(document).on('click', '.movie-tile', function (event) {
+        $(document).on('click', '.movie-poster', function (event) {
             var trailerYouTubeId = $(this).attr('data-trailer-youtube-id')
             var sourceUrl = 'http://www.youtube.com/embed/' + trailerYouTubeId + '?autoplay=1&html5=1';
             $("#trailer-video-container").empty().append($("<iframe></iframe>", {
@@ -82,11 +98,6 @@ h2.movie-title {
               'type': 'text-html',
               'src': sourceUrl,
               'frameborder': 0
-            }));
-        });
-        // Shows review when review modal is opened
-        $(document).on('click', '#details', function (event) {
-			$('.modal-dialog').show();
             }));
         });
         // Animate in the movies when the page loads
@@ -116,24 +127,6 @@ main_page_content = '''
         </div>
       </div>
     </div>
-  <!-- Review Modal -->
-    
-    <!-- Modal content-->
-    <div class="modal" id="details">
-        <div class="modal-dialog">
-      		<div class="modal-content">
-        		<div class="modal-header">
-          			<a href="#" class="hanging-close" data-dismiss="modal" aria-hidden="true">
-            			<img src="https://lh5.ggpht.com/v4-628SilF0HtHuHdu5EzxD7WRqOrrTIDi_MhEG6_qkNtUK5Wg7KPkofp_VJoF7RS2LhxwEFCO1ICHZlc-o_=s0#w=24&h=24"/>
-          			</a>
-          			<h4 class="modal-title">Movie Plot</h4>
-        		</div>
-        		<div class="modal-body-review">
-        			<div class="scale-media" id="review-video-container">{movie_review}</div>
-      			</div>  
-    		</div>
-    	</div>
-    </div>
     <!-- Main Page Content -->
     <div class="container">
       <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -154,11 +147,30 @@ main_page_content = '''
 
 # A single movie entry html template
 movie_tile_content = '''
-<div class="col-xs-6 col-sm-3 movie-tile text-center" data-trailer-youtube-id="{trailer_youtube_id}" data-toggle="modal" data-target="#trailer">
+
+<div class="col-xs-6 col-sm-3 movie-tile text-center">
+  <div class="movie-poster" data-trailer-youtube-id="{trailer_youtube_id}" data-toggle="modal" data-target="#trailer">
     <img src="{poster_image_url}" width="220" height="342">
     <h2>{movie_title}</h2>
+  </div>
   <!-- Trigger the modal with a button -->
-    <a href="#"" data-toggle="modal" data-target="#details"><button type="button" class="btn btn-info btn-lg">Movie Plot</button></a>
+    <button type="button" class="btn btn-info btn-lg" data-toggle="modal" data-target="#{word}">Movie Plot</button>
+    <!-- Modal content-->
+    <div class="modal" id="{word}">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+                <a href="#" class="hanging-close" data-dismiss="modal" aria-hidden="true">
+                  <img src="https://lh5.ggpht.com/v4-628SilF0HtHuHdu5EzxD7WRqOrrTIDi_MhEG6_qkNtUK5Wg7KPkofp_VJoF7RS2LhxwEFCO1ICHZlc-o_=s0#w=24&h=24"/>
+                </a>
+                <h4 class="modal-title">Movie Plot</h4>
+            </div>
+              <div class="modal-body-review">
+              <div class="scale-media" id="review-video-container">{storyline}</div>
+              </div>  
+          </div>
+       </div>
+    </div>
 </div>
   
 '''
@@ -170,15 +182,15 @@ def create_movie_tiles_content(movies):
         # Extract the youtube ID from the url
         youtube_id_match = re.search(r'(?<=v=)[^&#]+', movie.trailer_youtube_url)
         youtube_id_match = youtube_id_match or re.search(r'(?<=be/)[^&#]+', movie.trailer_youtube_url)
-        trailer_youtube_id = youtube_id_match.group(0) if youtube_id_match else None
-
-        movie_plot=movie.review
+        trailer_youtube_id = (youtube_id_match.group(0) if youtube_id_match else None)
 
         # Append the tile for the movie with its content filled in
         content += movie_tile_content.format(
             movie_title=movie.title,
+            storyline=movie.storyline,
             poster_image_url=movie.poster_image_url,
-            trailer_youtube_id=trailer_youtube_id
+            trailer_youtube_id=trailer_youtube_id,
+            word=movie.word
         )
     return content
 
@@ -187,9 +199,9 @@ def open_movies_page(movies):
   output_file = open('fresh_tomatoes.html', 'w')
 
   # Replace the placeholder for the movie tiles with the actual dynamically generated content
-  # rendered_content = main_page_content.format(movie_tiles=create_movie_tiles_content(movies))
-  movie_tiles_snippet = create_movie_tiles_content(movies)
-  rendered_content = main_page_content.format(movie_tiles=movie_tiles_snippet, movie_review=movie_plot)
+  rendered_content = main_page_content.format(
+    movie_tiles=create_movie_tiles_content(movies))
+
   # Output the file
   output_file.write(main_page_head + rendered_content)
   output_file.close()
